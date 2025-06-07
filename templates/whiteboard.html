@@ -1,0 +1,984 @@
+<!-- MVP1 -->
+
+<!-- pen, shift + click to insert straight line -->
+<!-- picture + annotate on picture and move all --> 
+<!-- side buttons stay fixed to window sides instead of canvas -->
+
+<!--custom cplor palette import and export -->
+<!-- menu button for download and uploads-->
+
+<!-- templates/whiteboard.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Whiteboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #1a2a6c);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow: auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            color: white;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 5px;
+        }
+        
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        .container {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            /*max-width: 1200px;*/
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            overflow: visible;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            position: relative;
+        }
+        
+        .toolbar {
+            display: flex;
+            background: rgba(30, 30, 40, 0.85);
+            padding: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .tool-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            padding: 0 15px;
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .tool-group:last-child {
+            border-right: none;
+        }
+        
+        .tool-btn {
+            background: rgba(50, 50, 70, 0.7);
+            color: white;
+            border: none;
+            width: 45px;
+            height: 45px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .tool-btn:hover {
+            background: rgba(70, 70, 100, 0.9);
+            transform: translateY(-2px);
+        }
+        
+        .tool-btn.active {
+            background: #4a6ee0;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        .color-picker {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        
+        .color-option {
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: transform 0.2s ease;
+        }
+        
+        .color-option:hover {
+            transform: scale(1.2);
+        }
+        
+        .color-option.active {
+            border-color: white;
+            transform: scale(1.2);
+        }
+        
+        .canvas-container {
+            position: relative;
+            width: 100%;
+            height: 600px;
+            background: #414040;
+            overflow: auto;
+        }
+        
+        #canvas {
+            
+            background: rgb(102, 98, 98);
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1) inset;
+            display: block;
+        }
+        
+        /* Fixed position buttons relative to the container */
+        .add-page-btn {
+            position: absolute;
+            background: #4a6ee0;
+            color: white;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-size: 24px;
+            cursor: pointer;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+             opacity: 0.5;
+        }
+        
+        .add-page-btn:hover {
+            background: #5a7ef0;
+            transform: scale(1.1);
+             opacity: 1;
+        }
+        
+        #add-top { 
+            top: 80px;
+            left: 50%; 
+            transform: translate(-50%, -50%);
+        }
+        
+        #add-bottom { 
+            bottom: 0; 
+            left: 50%; 
+            transform: translate(-50%, 50%);
+        }
+        
+        #add-left { 
+            left: 0; 
+            top: 50%; 
+            transform: translate(-50%, -50%);
+        }
+        
+        #add-right { 
+            right: 0; 
+            top: 50%; 
+            transform: translate(50%, -50%);
+        }
+        
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            background: rgba(30, 30, 40, 0.85);
+            color: rgba(255, 255, 255, 0.8);
+            padding: 10px 20px;
+            font-size: 14px;
+        }
+
+    
+        .instructions {
+            display: none;
+
+            margin-top: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            color: white;
+            max-width: 1200px;
+        }
+        
+        .instructions h2 {
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        
+        .instructions ul {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            list-style-type: none;
+        }
+        
+        .instructions li {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 12px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .instructions i {
+            color: #4a6ee0;
+            font-size: 20px;
+        }
+        
+        .dropdown-menu {
+    position: absolute;
+    top: 110%;
+    left: 0;
+    background: rgba(50, 50, 70, 0.95);
+    border-radius: 10px;
+    padding: 10px;
+    display: none;
+    flex-direction: column;
+    gap: 8px;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+    z-index: 20;
+    min-width: 130px;
+}
+
+.wide-btn {
+    width: 130px;
+    justify-content: flex-start;
+    padding: 8px 10px;
+    font-size: 14px;
+    gap: 8px;
+}
+
+
+
+        @media (max-width: 768px) {
+            .toolbar {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .tool-group {
+                border-right: none;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+                padding: 10px 0;
+                width: 100%;
+            }
+            
+            .canvas-container {
+                display: inline-block; /* or block */
+  position: relative;
+            }
+            
+            .add-page-btn {
+                width: 35px;
+                height: 35px;
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h2>Whiteboard</h2>
+        <p>Draw, write, insert images, draw on images or text.</p>
+    </div>
+    
+    <div class="container">
+        <div class="toolbar">
+            <div class="tool-group" style="position: relative;">
+                <button id="settings-btn" class="tool-btn" title="Settings ⚙️">
+                    <i class="fas fa-cog"></i>
+                </button>
+
+                <div id="settings-menu" class="dropdown-menu">
+                    <button id="save-palette-btn" class="tool-btn wide-btn">💾 Save Palette</button>
+
+                    <input type="file" id="palette-input" accept=".json" style="display: none;" />
+                    <button id="load-palette-btn" class="tool-btn wide-btn">📁 Load Palette</button>
+
+                    <button class="tool-btn wide-btn" onclick="clearCustomColors()">🧹 Clear Colors</button>
+
+                    <button class="tool-btn wide-btn" onclick="downloadCanvasJSON()">⬇️ Download .json</button>
+
+                    <input type="file" id="jsonInput" accept=".json" style="display: none;" />
+                    <button class="tool-btn wide-btn" onclick="document.getElementById('jsonInput').click()">📂 Load .json</button>
+
+                    <button class="tool-btn wide-btn" onclick="downloadPNG()">🖼️ Download PNG</button>
+                </div>
+            </div>
+            
+            
+            <div class="tool-group">
+                <button id="select-tool" class="tool-btn active" title="Select/Move (S)">
+                    <i class="fas fa-mouse-pointer"></i>
+                </button>
+                <button id="pen-tool" class="tool-btn" title="Pen Tool (P)">
+                    <i class="fas fa-pen"></i>
+                </button>
+                <button id="text-tool" class="tool-btn" title="Text Tool (T)">
+                    <i class="fas fa-font"></i>
+                </button>
+                <button id="image-tool" class="tool-btn" title="Insert Image (I)">
+                    <i class="fas fa-image"></i>
+                </button>
+            </div>
+            
+            <div class="tool-group">
+                <button id="undo-btn" class="tool-btn" title="Undo (Ctrl+Z)">
+                    <i class="fas fa-undo"></i>
+                </button>
+                <button id="redo-btn" class="tool-btn" title="Redo (Ctrl+Y)">
+                    <i class="fas fa-redo"></i>
+                </button>
+                <button id="clear-btn" class="tool-btn" title="Clear Canvas">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+            
+            
+            
+            <div class="tool-group">
+                <input style="background: #413636; color:antiquewhite" type="number" id="brush-size" min="1" max="50" value="5" title="Brush Size">
+                <span id="brush-size-value">5px</span>
+            </div>
+            
+<div class="tool-group">
+                <div class="color-picker">
+                    <div class="color-option active" style="background-color: #000000;" data-color="#000000"></div>
+                    <div class="color-option" style="background-color: #ff3b30;" data-color="#ff3b30"></div>
+                    <div class="color-option" style="background-color: #4cd964;" data-color="#4cd964"></div>
+                    <div class="color-option" style="background-color: #007aff;" data-color="#007aff"></div>
+                    <div class="color-option" style="background-color: #ffcc00;" data-color="#ffcc00"></div>
+                    <input type="color" id="custom-color-picker" title="Pick Custom Color">
+                    
+                </div>
+            </div>
+
+            
+
+        <div class="canvas-container" id="canvas-scroll-container">
+            <canvas id="canvas"></canvas>
+        </div>
+        
+        <!-- Fixed position buttons relative to the container -->
+        <button id="add-top" class="add-page-btn">+</button>
+        <button id="add-bottom" class="add-page-btn">+</button>
+        <button id="add-left" class="add-page-btn">+</button>
+        <button id="add-right" class="add-page-btn">+</button>
+        
+        <div class="status-bar">
+            <div>Current Tool: <span id="current-tool">Select</span></div>
+            <div>Objects: <span id="object-count">0</span></div>
+            <div>Canvas: <span id="canvas-size">1100x500</span></div>
+            <div id="help-message">Press H for Help</div>
+        </div>
+    </div>
+    
+    <div class="instructions">
+        <h2>How to Use the Whiteboard</h2>
+        <ul>
+            <li><i class="fas fa-mouse-pointer"></i> <strong>Select/Move:</strong> Click to select. Delete with Del key</li>
+            <li><i class="fas fa-keyboard"></i> <strong>Scroll:</strong> Keyboard Shortcuts: Ctrl+z, Ctrl+y, p= pen, s=selection tool, t=text insert, i=image insert</li>
+            <li><i class="fas fa-pen"></i> <strong>Draw:</strong> Click Pen and drag to create freehand drawings</li>
+            <li><i class="fas fa-image"></i> <strong>Images:</strong> Insert images(i) from your computer</li>
+            <li><i class="fas fa-image"></i> <strong>Images:</strong> Write with Pen(p) or Text tool(t) on image!</li>
+            <li><i class="fas fa-image"></i> <strong>Images:</strong> Freeform Resize image </li>
+            <li><i class="fas fa-arrows-alt"></i> <strong>Resize Canvas:</strong> Click + buttons on edges to expand</li>
+            <li><i class="fas fa-palette"></i> <strong>Colors:</strong> Click color circles to change Pen/Text color</li>
+            <li><i class="fas fa-palette"></i> <strong>Colors:</strong> Save and load custom color palettes</li>
+            <li><i class="fas fa-expand"></i> <strong>Scroll:</strong> Use scrollbars to navigate canvas</li>
+            <li><i class="fas fa-save"></i> <strong>Save:</strong> Save as editable JSON or as ReadOnly PNG</li>
+        </ul>
+    </div>
+
+    <script>
+        // Initialize canvas
+        const canvas = new fabric.Canvas('canvas', {
+            isDrawingMode: false,
+            selection: true,
+            backgroundColor: '#ffffff'
+        });
+        
+        // Set initial canvas dimensions
+        const initialWidth = 1200;
+        const initialHeight = 600;
+        canvas.setWidth(initialWidth);
+        canvas.setHeight(initialHeight);
+        
+        // Initialize variables
+        let currentColor = '#000000';
+        let currentBrushSize = 5;
+        let canvasHistory = [];
+        let historyPointer = -1;
+        let currentTool = 'select';
+        
+        // Update UI elements
+        document.getElementById('current-tool').textContent = 'Select';
+        document.getElementById('brush-size-value').textContent = currentBrushSize + 'px';
+        document.getElementById('canvas-size').textContent = `${initialWidth}x${initialHeight}`;
+        
+        // Save initial state
+        saveState();
+        
+        // Tool selection
+        document.getElementById('select-tool').addEventListener('click', () => {
+            setActiveTool('select');
+            canvas.isDrawingMode = false;
+            canvas.selection = true;
+        });
+        
+        document.getElementById('pen-tool').addEventListener('click', () => {
+            setActiveTool('pen');
+            canvas.isDrawingMode = true;
+            canvas.selection = false;
+            updateBrushSettings();
+        });
+        
+        document.getElementById('text-tool').addEventListener('click', () => {
+            setActiveTool('text');
+            canvas.isDrawingMode = false;
+            canvas.selection = false;
+            
+            const text = new fabric.IText('Type here...', {
+                left: 100,
+                top: 100,
+                fontFamily: 'Arial',
+                fontSize: 24,
+                fill: currentColor,
+                padding: 10,
+                hasControls: true
+            });
+            
+            canvas.add(text);
+            canvas.setActiveObject(text);
+            saveState();
+        });
+        
+        document.getElementById('image-tool').addEventListener('click', () => {
+            setActiveTool('image');
+            canvas.isDrawingMode = false;
+            
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                const formData = new FormData();
+                formData.append('image', file);
+                
+                fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        return response.text().then(text => {
+                            throw new Error(`Server error: ${response.status} ${text}`);
+                        });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.error) {
+                        throw new Error(data.error);
+                    }
+                    
+                    fabric.Image.fromURL(data.url, img => {
+                        img.scaleToWidth(200);
+                        img.set({
+                            left: 200,
+                            top: 200,
+                            selectable: true,
+                            hasControls: true
+                        });
+                        canvas.add(img);
+                        canvas.setActiveObject(img);
+                        saveState();
+                    }, {
+                        crossOrigin: 'anonymous'
+                    });
+                })
+                .catch(error => {
+                    console.error('Error uploading image:', error);
+                    alert(`Failed to upload image: ${error.message}`);
+                });
+            };
+            input.click();
+        });
+        
+        // Color selection
+        document.querySelectorAll('.color-option').forEach(option => {
+            option.addEventListener('click', () => {
+                document.querySelectorAll('.color-option').forEach(opt => {
+                    opt.classList.remove('active');
+                });
+                option.classList.add('active');
+                currentColor = option.dataset.color;
+                updateBrushSettings();
+            });
+        });
+
+        // Custom color picker
+        document.getElementById('custom-color-picker').addEventListener('input', function () {
+            // Deselect all preset colors
+            document.querySelectorAll('.color-option').forEach(opt => {
+                opt.classList.remove('active');
+            });
+
+            // Update current color
+            currentColor = this.value;
+            updateBrushSettings();
+        });
+
+
+const colorPicker = document.getElementById('custom-color-picker');
+const colorPickerContainer = document.querySelector('.color-picker');
+let customColors = JSON.parse(localStorage.getItem('customColors')) || [];
+
+// Load saved custom colors on startup
+function loadCustomColors() {
+    customColors.forEach(color => {
+        if (!colorPickerContainer.querySelector(`[data-color="${color}"]`)) {
+            createColorCircle(color);
+        }
+    });
+}
+
+// Create color circle (preset-like)
+function createColorCircle(color) {
+    const circle = document.createElement('div');
+    circle.classList.add('color-option', 'custom-color');
+    circle.style.backgroundColor = color;
+    circle.dataset.color = color;
+
+    circle.addEventListener('click', function () {
+        document.querySelectorAll('.color-option').forEach(opt => opt.classList.remove('active'));
+        this.classList.add('active');
+        currentColor = this.dataset.color;
+        updateBrushSettings();
+    });
+
+    colorPickerContainer.appendChild(circle);
+    return circle;
+}
+
+// Save to localStorage
+function saveCustomColors() {
+    localStorage.setItem('customColors', JSON.stringify(customColors));
+}
+
+// Handle new color picked
+colorPicker.addEventListener('change', function () {
+    const selectedColor = this.value;
+
+    // If color already exists, just activate it
+    let existing = colorPickerContainer.querySelector(`[data-color="${selectedColor}"]`);
+    if (existing) {
+        document.querySelectorAll('.color-option').forEach(opt => opt.classList.remove('active'));
+        existing.classList.add('active');
+    } else {
+        // New custom color
+        customColors.push(selectedColor);
+        saveCustomColors();
+        const newCircle = createColorCircle(selectedColor);
+
+        document.querySelectorAll('.color-option').forEach(opt => opt.classList.remove('active'));
+        newCircle.classList.add('active');
+    }
+
+    currentColor = selectedColor;
+    updateBrushSettings();
+});
+
+// Call on load
+loadCustomColors();
+
+function clearCustomColors() {
+    customColors = [];
+    saveCustomColors();
+
+    document.querySelectorAll('.custom-color').forEach(el => {
+        if (!el.hasAttribute('data-default')) {
+            el.remove();
+        }
+    });
+
+    currentColor = '#000000';
+    updateBrushSettings();
+}
+
+
+
+        // Brush size
+        document.getElementById('brush-size').addEventListener('input', (e) => {
+            currentBrushSize = parseInt(e.target.value);
+            document.getElementById('brush-size-value').textContent = currentBrushSize + 'px';
+            updateBrushSettings();
+        });
+        
+        // Undo/Redo
+        document.getElementById('undo-btn').addEventListener('click', undo);
+        document.getElementById('redo-btn').addEventListener('click', redo);
+        
+        // Clear canvas
+        document.getElementById('clear-btn').addEventListener('click', () => {
+            if (confirm('Are you sure you want to clear the canvas?')) {
+                canvas.clear();
+                canvas.backgroundColor = '#ffffff';
+                canvas.setWidth(initialWidth);
+                canvas.setHeight(initialHeight);
+                updateCanvasSizeDisplay();
+                saveState();
+            }
+        });
+        
+        // Add page functionality
+        document.getElementById('add-top').addEventListener('click', () => addPage('top'));
+        document.getElementById('add-bottom').addEventListener('click', () => addPage('bottom'));
+        document.getElementById('add-left').addEventListener('click', () => addPage('left'));
+        document.getElementById('add-right').addEventListener('click', () => addPage('right'));
+        
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+    const key = e.key.toLowerCase();
+
+    if (key === 's') setActiveTool('select');
+    else if (key === 'p') setActiveTool('pen');
+    else if (key === 't') setActiveTool('text');
+    else if (key === 'i') document.getElementById('image-tool').click();
+
+    if (e.ctrlKey && key === 'z') undo();
+    if (e.ctrlKey && key === 'y') redo();
+
+    if (e.key === 'Delete') {
+        const activeObjects = canvas.getActiveObjects();
+        if (activeObjects && activeObjects.length > 0) {
+            canvas.remove(...activeObjects);
+            saveState();
+        }
+    }
+
+    if (key === 'h') {
+        const instr = document.querySelector('.instructions');
+        if (instr) {
+            instr.style.display = (instr.style.display === 'none' || instr.style.display === '') ? 'block' : 'none';
+        }
+    }
+});
+
+        
+        // Canvas events
+        canvas.on('object:added', updateObjectCount);
+        canvas.on('object:removed', updateObjectCount);
+        canvas.on('object:modified', saveState);
+        
+        // Functions
+        function setActiveTool(tool) {
+    currentTool = tool;
+
+    // Update UI buttons
+    document.querySelectorAll('.tool-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+
+    if (tool === 'select') {
+        document.getElementById('select-tool').classList.add('active');
+        document.getElementById('current-tool').textContent = 'Select';
+
+        canvas.isDrawingMode = false;
+        canvas.selection = true;
+    } 
+    else if (tool === 'pen') {
+        document.getElementById('pen-tool').classList.add('active');
+        document.getElementById('current-tool').textContent = 'Pen';
+
+        canvas.isDrawingMode = true;
+        canvas.selection = false;
+        updateBrushSettings();
+    } 
+    else if (tool === 'text') {
+        document.getElementById('text-tool').classList.add('active');
+        document.getElementById('current-tool').textContent = 'Text';
+
+        canvas.isDrawingMode = false;
+        canvas.selection = false;
+
+        // Add new text object on keyboard shortcut too
+        const text = new fabric.IText('Type here...', {
+            left: 100,
+            top: 100,
+            fontFamily: 'Arial',
+            fontSize: 24,
+            fill: currentColor,
+            padding: 10,
+            hasControls: true
+        });
+        canvas.add(text);
+        canvas.setActiveObject(text);
+        saveState();
+    }
+    else if (tool === 'image') {
+        document.getElementById('image-tool').classList.add('active');
+        document.getElementById('current-tool').textContent = 'Image';
+
+        canvas.isDrawingMode = false;
+
+        // Trigger the image upload dialog only if setActiveTool is called from keyboard
+        // (You might want to separate this logic or handle it only on button click)
+    }
+}
+
+        
+        function updateBrushSettings() {
+            canvas.freeDrawingBrush.color = currentColor;
+            canvas.freeDrawingBrush.width = currentBrushSize;
+        }
+        
+        function saveState() {
+            // Save only the current state and future states (if any)
+            if (historyPointer < canvasHistory.length - 1) {
+                canvasHistory = canvasHistory.slice(0, historyPointer + 1);
+            }
+            
+            const json = JSON.stringify(canvas.toJSON());
+            canvasHistory.push(json);
+            historyPointer = canvasHistory.length - 1;
+            
+            // Limit history to 50 states
+            if (canvasHistory.length > 50) {
+                canvasHistory.shift();
+                historyPointer--;
+            }
+            
+            updateObjectCount();
+        }
+        
+        function undo() {
+            if (historyPointer <= 0) return;
+            
+            historyPointer--;
+            loadState(canvasHistory[historyPointer]);
+        }
+        
+        function redo() {
+            if (historyPointer >= canvasHistory.length - 1) return;
+            
+            historyPointer++;
+            loadState(canvasHistory[historyPointer]);
+        }
+        
+        function loadState(json) {
+            canvas.loadFromJSON(JSON.parse(json), () => {
+                canvas.renderAll();
+                updateObjectCount();
+                updateCanvasSizeDisplay();
+            });
+        }
+        
+        function updateObjectCount() {
+            document.getElementById('object-count').textContent = canvas.getObjects().length;
+        }
+        
+        function updateCanvasSizeDisplay() {
+            document.getElementById('canvas-size').textContent = 
+                `${canvas.getWidth()}x${canvas.getHeight()}`;
+        }
+        
+        function addPage(direction) {
+            const currentWidth = canvas.getWidth();
+            const currentHeight = canvas.getHeight();
+            const offset = 200;
+            let newWidth = currentWidth;
+            let newHeight = currentHeight;
+            
+            switch(direction) {
+                case 'top':
+                    newHeight = currentHeight + offset;
+                    canvas.setHeight(newHeight);
+                    canvas.forEachObject(obj => {
+                        obj.set('top', obj.top + offset);
+                    });
+                    break;
+                case 'bottom':
+                    newHeight = currentHeight + offset;
+                    canvas.setHeight(newHeight);
+                    break;
+                case 'left':
+                    newWidth = currentWidth + offset;
+                    canvas.setWidth(newWidth);
+                    canvas.forEachObject(obj => {
+                        obj.set('left', obj.left + offset);
+                    });
+                    break;
+                case 'right':
+                    newWidth = currentWidth + offset;
+                    canvas.setWidth(newWidth);
+                    break;
+            }
+            
+            canvas.renderAll();
+            updateCanvasSizeDisplay();
+            saveState();
+        }
+        
+
+
+        // 2. Download JSON file
+        function downloadCanvasJSON() {
+            const json = JSON.stringify({
+        canvasData: canvas.toJSON(),
+        width: canvas.getWidth(),
+        height: canvas.getHeight()
+    }, null, 2);
+
+            const blob = new Blob([json], { type: 'application/json' });
+            const link = document.createElement('a');
+            link.download = 'canvas.json';
+            link.href = URL.createObjectURL(blob);
+            link.click();
+            setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+
+        }
+
+        // 3. Download as PNG image
+        function downloadPNG() {
+            const dataURL = canvas.toDataURL({ format: 'png' });
+            const link = document.createElement('a');
+            link.download = 'canvas.png';
+            link.href = dataURL;
+            link.click();
+        }
+
+        document.getElementById('jsonInput').addEventListener('change', function (e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function (event) {
+        try {
+            const data = JSON.parse(event.target.result);
+        const json = data.canvasData;
+        const width = data.width;
+        const height = data.height;
+
+        canvas.setWidth(width);
+        canvas.setHeight(height);
+
+        canvas.loadFromJSON(json, () => {
+            canvas.renderAll();
+            document.getElementById('canvas-container').style.width = width + 'px';
+            document.getElementById('canvas-container').style.height = height + 'px';
+
+            alert("Canvas loaded with dimensions!");
+        });
+
+        } catch (err) {
+            alert("Invalid JSON file!");
+            console.error(err);
+        }
+    };
+    reader.readAsText(file);
+});
+
+        const settingsBtn = document.getElementById('settings-btn');
+    const settingsMenu = document.getElementById('settings-menu');
+
+    settingsBtn.addEventListener('click', () => {
+        settingsMenu.style.display = (settingsMenu.style.display === 'flex') ? 'none' : 'flex';
+    });
+
+    // Optional: Click outside to close
+    document.addEventListener('click', (e) => {
+        if (!settingsBtn.contains(e.target) && !settingsMenu.contains(e.target)) {
+            settingsMenu.style.display = 'none';
+        }
+    });
+
+
+    document.getElementById('save-palette-btn').addEventListener('click', function () {
+    const palette = {
+        colors: customColors // assuming you already have this array
+    };
+
+    const blob = new Blob([JSON.stringify(palette, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'palette.json';
+    a.click();
+});
+
+
+document.getElementById('load-palette-btn').addEventListener('click', function () {
+    document.getElementById('palette-input').click();
+});
+
+document.getElementById('palette-input').addEventListener('change', function (e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function (evt) {
+        try {
+            const json = JSON.parse(evt.target.result);
+
+            if (Array.isArray(json.colors)) {
+                // Combine old and new colors, remove duplicates
+                const allColors = [...customColors, ...json.colors];
+                const uniqueColors = [...new Set(allColors)];
+
+                // Update global array
+                customColors = uniqueColors;
+                saveCustomColors(); // optional: save to localStorage
+
+                // Remove all previous .custom-color elements
+                document.querySelectorAll('.color-option.custom-color').forEach(el => el.remove());
+
+                // Recreate all custom colors
+                customColors.forEach(color => {
+                    createColorCircle(color);
+                });
+            } else {
+                alert("Invalid palette format.");
+            }
+        } catch (err) {
+            alert("Failed to load palette.");
+        }
+    };
+    reader.readAsText(file);
+
+    // Reset the input so user can load the same file again if needed
+    e.target.value = '';
+});
+
+
+
+
+        // Initialize brush settings
+        updateBrushSettings();
+    </script>
+</body>
+</html>
